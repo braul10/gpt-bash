@@ -1,7 +1,9 @@
 #!/bin/bash
 
-if [ -f .env ]; then
-    export $(cat .env | xargs)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    export $(cat "$SCRIPT_DIR/.env" | xargs)
 fi
 
 if [ -z "$OPENAI_API_KEY" ]; then
