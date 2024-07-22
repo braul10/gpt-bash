@@ -1,5 +1,6 @@
 #!/bin/bash
 
+MODEL="gpt-4o"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [ -f "$SCRIPT_DIR/.env" ]; then
@@ -20,15 +21,24 @@ query_gpt() {
         {"role": "user", "content": $text_query}
     ]')
 
-    local response=$(curl -s -X POST https://api.openai.com/v1/chat/completions \
+    local response=$(curl -s -w "\n%{http_code}" -X POST https://api.openai.com/v1/chat/completions \
         -H "Authorization: Bearer $OPENAI_API_KEY" \
         -H "Content-Type: application/json" \
         -d '{
-          "model": "gpt-4o",
+          "model": "'"$MODEL"'",
           "messages": '"$prompt"'
         }')
 
-    echo "$response" | jq -r '.choices[0].message.content'
+    local body=$(echo "$response" | sed '$d')
+    local status_code=$(echo "$response" | tail -n1)
+
+    if [ "$status_code" -ne 200 ]; then
+        echo -e "$(colored "Error: Received status code $status_code" red)"
+        echo -e "$(colored "Response: $body" red)"
+        exit 1
+    fi
+
+    echo "$body" | jq -r '.choices[0].message.content'
 }
 
 colored() {
@@ -41,6 +51,9 @@ colored() {
             ;;
         green)
             echo -e "\033[32m$text\033[0m"
+            ;;
+        blue)
+            echo -e "\033[34m$text\033[0m"
             ;;
         *)
             echo "$text"
@@ -55,6 +68,7 @@ colored "
 ██║   ██║██╔═══╝    ██║   
 ╚██████╔╝██║        ██║   
  ╚═════╝ ╚═╝        ╚═╝   
+Model: $MODEL
 " red
 
 while true; do
@@ -65,6 +79,5 @@ while true; do
     fi
 
     response=$(query_gpt "$user_input")
-    colored "GPT > $response" red
+    colored "GPT > $response" blue
 done
-
